@@ -13,6 +13,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(dplyr)
+library(lubridate)
+```
+
+```{r}
 vaccine<-read.csv("COVID-19_Vaccinations_in_the_United_States_Jurisdiction.csv")
 case_death<-read.csv("United_States_COVID-19_Cases_and_Deaths_by_State_over_Time.csv")
 ```
@@ -20,15 +24,33 @@ case_death<-read.csv("United_States_COVID-19_Cases_and_Deaths_by_State_over_Time
 
 
 ```{r}
-case_death<-case_death %>%
-  select(c(1,2,3,8)) %>%
-  rename(Date=submission_date) 
-  
-vaccine<-vaccine %>%
-  select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
-  rename(state=Location) 
-
-comb<-right_join(case_death,vaccine,by=c("Date","state"))
+USstate=c("AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
+          "KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
+          "NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV",
+          "WI","WY")
+case_death<-case_death %>% 
+  transmute(date=mdy(submission_date),
+            state=state,
+            tot_case=tot_cases,
+            tot_death=tot_death
+            ) %>%
+  filter(state %in% USstate) %>%
+  filter(date >= as.Date("2021-01-01") & date<=as.Date("2021-11-30"))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+vaccine<-vaccine %>% 
+  select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
+  rename(state=Location) %>% 
+  mutate(date=mdy(Date)) %>%
+  select(-Date)
+```
+
+```{r}
+comb<-right_join(vaccine,case_death,by=c("date","state"))
+```
+
+```{r}
+
+```
+
