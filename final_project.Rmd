@@ -14,6 +14,11 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(dplyr)
 library(lubridate)
+library(ggplot2)
+library(caret)
+library(MASS)
+library(rpart)
+library(randomForest)
 ```
 
 ```{r}
@@ -32,14 +37,16 @@ case_death<-case_death %>%
   transmute(date=mdy(submission_date),
             state=state,
             tot_case=tot_cases,
-            tot_death=tot_death
+            tot_death=tot_death,
+            new_case=new_case,
+            new_death=new_death
             ) %>%
   filter(state %in% USstate) %>%
   filter(date >= as.Date("2021-01-01") & date<=as.Date("2021-11-30"))
 ```
 
 ```{r}
-vaccine<-vaccine %>% 
+vaccine<-vaccine%>%
   select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
   rename(state=Location) %>% 
   mutate(date=mdy(Date)) %>%
@@ -48,9 +55,42 @@ vaccine<-vaccine %>%
 
 ```{r}
 comb<-right_join(vaccine,case_death,by=c("date","state"))
+
+new_comb_ma<-comb%>%
+  filter(state=="MA")%>%
+  arrange(date)
+  #mutate(new_case=tot_case-lag(tot_case)) %>%
+  #mutate(new_death=tot_death-lag(tot_death))%>%
+  #mutate(new_adm=Administered-lag(Administered)) %>%
+  #mutate(new_jj=Administered_Janssen-lag(Administered_Janssen)) %>%
+  #mutate(new_moderna=Administered_Moderna-lag(Administered_Moderna))%>%
+ # mutate(new_pfizer=Administered_Pfizer-lag(Administered_Pfizer))
 ```
 
 ```{r}
+new_comb_ma%>%ggplot(aes(date,new_case))+
+  geom_point()
+```
+```{r}
+new_comb_ma%>%ggplot(aes(date,new_death))+
+  geom_point()
+```
+```{r}
+inTrain   <- createDataPartition(y = new_comb_ma$new_case, p = 0.7, times = 1, list = FALSE)
+train_set <- slice(new_comb_ma, inTrain)
+test_set  <- slice(new_comb_ma, -inTrain)
+```
 
+```{r}
+rpart_fit <- rpart(new_case ~ Administered, data = train_set)
+rpart_preds <- predict(rpart_fit, test_set)
+test_set%>%
+  ggplot()+geom_line(aes(date,rpart_preds),color="red")+geom_point(aes(date,new_case))
+```
+```{r}
+rf_fit <- randomForest(new_case ~ Administered, data = train_set)
+rf_preds <- predict(rf_fit, test_set)
+test_set%>%
+  ggplot()+geom_line(aes(date,rf_preds),color="red")+geom_point(aes(date,new_case))
 ```
 
