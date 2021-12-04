@@ -46,11 +46,11 @@ case_death<-case_death %>%
 ```
 
 ```{r}
-vaccine<-vaccine%>%
-  select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
+vaccine<-vaccine %>% 
+  dplyr::select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
   rename(state=Location) %>% 
   mutate(date=mdy(Date)) %>%
-  select(-Date)
+  dplyr::select(-Date)
 ```
 
 ```{r}
@@ -64,7 +64,7 @@ new_comb_ma<-comb%>%
   #mutate(new_adm=Administered-lag(Administered)) %>%
   #mutate(new_jj=Administered_Janssen-lag(Administered_Janssen)) %>%
   #mutate(new_moderna=Administered_Moderna-lag(Administered_Moderna))%>%
- # mutate(new_pfizer=Administered_Pfizer-lag(Administered_Pfizer))
+  #mutate(new_pfizer=Administered_Pfizer-lag(Administered_Pfizer))
 ```
 
 ```{r}
