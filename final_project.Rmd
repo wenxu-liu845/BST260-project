@@ -55,7 +55,7 @@ vaccine<-vaccine %>%
 
 ```{r}
 comb<-right_join(vaccine,case_death,by=c("date","state"))
-
+#write.csv(comb,"bigtable.csv",row.names = FALSE)
 new_comb_ma<-comb%>%
   filter(state=="MA")%>%
   arrange(date)
@@ -69,11 +69,15 @@ new_comb_ma<-comb%>%
 
 ```{r}
 new_comb_ma%>%ggplot(aes(date,new_case))+
-  geom_point()
+  geom_point()+
+  geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
+  geom_text(aes(x=as.Date("2021-04-30"),y=6700,label="Delta variant became dominant"))
 ```
 ```{r}
 new_comb_ma%>%ggplot(aes(date,new_death))+
-  geom_point()
+  geom_point()+
+  geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
+  geom_text(aes(x=as.Date("2021-08-30"),y=70,label="Delta variant became dominant"))
 ```
 ```{r}
 inTrain   <- createDataPartition(y = new_comb_ma$new_case, p = 0.7, times = 1, list = FALSE)
@@ -92,5 +96,33 @@ rf_fit <- randomForest(new_case ~ Administered, data = train_set)
 rf_preds <- predict(rf_fit, test_set)
 test_set%>%
   ggplot()+geom_line(aes(date,rf_preds),color="red")+geom_point(aes(date,new_case))
+```
+```{r}
+trainset<-new_comb_ma%>%
+  filter(date <= as.Date("2021-7-31"))
+testset<-new_comb_ma%>%
+  filter(date >as.Date("2021-07-31"))
+trainset
+```
+
+```{r}
+linearfit <- lm(new_case ~ poly(Administered,4,raw=TRUE), data = trainset)
+linear_pred <- predict(linearfit, testset)
+data.frame(
+  RMSE = RMSE(linear_pred, testset$new_case),
+  R2 = R2(linear_pred, testset$new_case)
+)
+#testset%>%
+#  ggplot()+geom_line(aes(date,rpart_preds1),color="red")+geom_point(aes(date,new_case))
+ggplot(testset, aes(date, new_case) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ x)
+```
+```{r}
+rf_fit1 <- randomForest(new_case ~ Administered, data = trainset)
+rf_preds1 <- predict(rf_fit1, testset)
+testset%>%
+  ggplot()+geom_line(aes(date,rf_preds1),color="red")+geom_point(aes(date,new_case))
+#rf_preds1
 ```
 
