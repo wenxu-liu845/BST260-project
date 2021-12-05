@@ -53,6 +53,8 @@ vaccine<-vaccine %>%
   dplyr::select(-Date)
 ```
 
+Combine two tables into #comb#
+#new_comb_ma# contains only data in MA
 ```{r}
 comb<-right_join(vaccine,case_death,by=c("date","state"))
 #write.csv(comb,"bigtable.csv",row.names = FALSE)
@@ -67,42 +69,78 @@ new_comb_ma<-comb%>%
   #mutate(new_pfizer=Administered_Pfizer-lag(Administered_Pfizer))
 ```
 
+The number of new cases against date in MA
 ```{r}
-new_comb_ma%>%ggplot(aes(date,new_case))+
-  geom_point()+
+new_comb_ma%>%ggplot(aes(x=date))+
+  geom_point(aes(y=new_case))+
   geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
   geom_text(aes(x=as.Date("2021-04-30"),y=6700,label="Delta variant became dominant"))
 ```
+The number of new death against date in MA
 ```{r}
 new_comb_ma%>%ggplot(aes(date,new_death))+
   geom_point()+
   geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
   geom_text(aes(x=as.Date("2021-08-30"),y=70,label="Delta variant became dominant"))
 ```
+
+The change of new cases across all states
 ```{r}
-inTrain   <- createDataPartition(y = new_comb_ma$new_case, p = 0.7, times = 1, list = FALSE)
-train_set <- slice(new_comb_ma, inTrain)
-test_set  <- slice(new_comb_ma, -inTrain)
+comb%>%
+  ggplot(aes(date,new_case,group=state))+
+  geom_line(color='darkseagreen3',alpha=0.6)+
+  geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
+  geom_text(aes(x=as.Date("2021-04-30"),y=40000,label="Delta variant became dominant"))
+```
+The change of new deaths across all states
+```{r}
+comb%>%
+  ggplot(aes(date,new_death,group=state))+
+  geom_line(color='darkseagreen3',alpha=0.6)
 ```
 
+Classify the number of new cases into three categories (1: new case<=10000 on that day, 2: 10000<new case<=20000 on that day, 3: new case>20000 on that day)
+Also classify the number of new deaths into three categories (1: new death<=200 on that day, 2: 200<new death<=400 on that day, 3: new death>400 on that day)
 ```{r}
-rpart_fit <- rpart(new_case ~ Administered, data = train_set)
+clascomb<-comb%>%
+  mutate(new_case_clas=ifelse(new_case<=10000,1,ifelse(new_case>20000,3,2)))%>%
+  mutate(new_death_clas=ifelse(new_death<=200,1,ifelse(new_death>400,3,2)))
+```
+
+Randomly divide the table into one train set (70% data) and one test set(30% data)
+```{r}
+inTrain   <- createDataPartition(y = clascomb$new_case, p = 0.7, times = 1, list = FALSE)
+train_set <- slice(clascomb, inTrain)
+test_set  <- slice(clascomb, -inTrain)
+```
+
+Perform a prediction of new cases using decision tree model
+```{r}
+rpart_fit <- rpart(new_case_clas ~ Administered, data = train_set)
 rpart_preds <- predict(rpart_fit, test_set)
+rpart_res<-ifelse(rpart_preds<1.5,1,ifelse(rpart_preds>=2.5,3,2))
+#rpart_preds
+confusionMatrix(data = as.factor(rpart_res), reference = as.factor(test_set$new_case_clas),positive="1")
 test_set%>%
-  ggplot()+geom_line(aes(date,rpart_preds),color="red")+geom_point(aes(date,new_case))
+  ggplot()+geom_point(aes(date,rpart_preds),color="red")+geom_point(aes(date,new_case_clas))
 ```
+Perform a prediction of new cases using random forest model
 ```{r}
-rf_fit <- randomForest(new_case ~ Administered, data = train_set)
+rf_fit <- randomForest(new_case_clas ~ Administered, data = train_set)
 rf_preds <- predict(rf_fit, test_set)
+rf_res<-ifelse(rf_preds<1.5,1,ifelse(rf_preds>=2.5,3,2))
+#rpart_preds
+confusionMatrix(data = as.factor(rf_res), reference = as.factor(test_set$new_case_clas),positive="1")
 test_set%>%
-  ggplot()+geom_line(aes(date,rf_preds),color="red")+geom_point(aes(date,new_case))
+  ggplot()+geom_point(aes(date,rf_preds),color="red")+geom_point(aes(date,new_case_clas))
 ```
+Divide the table into trainset and testset by date (cutoff point: 2021-07-31)
 ```{r}
-trainset<-new_comb_ma%>%
+trainset<-clascomb%>%
   filter(date <= as.Date("2021-7-31"))
-testset<-new_comb_ma%>%
+testset<-clascomb%>%
   filter(date >as.Date("2021-07-31"))
-trainset
+#trainset
 ```
 
 ```{r}
@@ -118,11 +156,20 @@ ggplot(testset, aes(date, new_case) ) +
   geom_point() +
   stat_smooth(method = lm, formula = y ~ x)
 ```
+
+Prediction of new death after 2021-07-31 using decision tree model
 ```{r}
-rf_fit1 <- randomForest(new_case ~ Administered, data = trainset)
-rf_preds1 <- predict(rf_fit1, testset)
+rpart_fit1 <- rpart(new_death_clas ~ new_case_clas+Administered, data = trainset)
+rpart_preds1 <- predict(rpart_fit1, testset)
+rpart_res1<-ifelse(rpart_preds1<1.5,1,ifelse(rpart_preds1>=2.5,3,2))
+
+confusionMatrix(data = as.factor(rpart_res1), reference = as.factor(testset$new_death_clas),positive="1")
 testset%>%
-  ggplot()+geom_line(aes(date,rf_preds1),color="red")+geom_point(aes(date,new_case))
+  ggplot()+geom_point(aes(date,rpart_preds1),color="red")+geom_point(aes(date,new_death_clas))
 #rf_preds1
+```
+
+```{r}
+
 ```
 

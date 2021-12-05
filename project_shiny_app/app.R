@@ -13,6 +13,7 @@ library(forcats)
 library(dslabs)
 library(ggplot2)
 bigtable<-read.csv("bigtable.csv")
+bigtable<- bigtable %>% mutate(date=dmy(date))
 
 ui <- fluidPage(
    theme = shinythemes::shinytheme("darkly"),
@@ -48,7 +49,13 @@ ui <- fluidPage(
     tabPanel("Vaccine",
       sidebarLayout(
         sidebarPanel(
-          
+          selectInput("state3",label="Select a state",
+                      choices = as.list(levels(bigtable$state))
+          )
+          #selectInput("manufacturer",label="Select a vaccine manufacturer",
+          #            choices = as.list(c("JJ","Moderna","Pfizer"))
+            
+          #)
         ),#sidebarPanel
         mainPanel(
           plotOutput("line2")
@@ -68,6 +75,16 @@ server <- function(input, output) {
        geom_line()+
        xlab("Dates") +
        ylab("Total cases")
+   })
+   output$line2<-renderPlot({
+     bigtable%>%
+       filter(state == input$state3)%>%
+       ggplot(aes(x=date))+
+       geom_line(aes(y=JJ,color="JJ"))+
+       geom_line(aes(y=Moderna,color="Moderna"))+
+       geom_line(aes(y=Pfizer,color="Pfizer"))+
+       xlab("Dates")+
+       ylab("Number of administered vaccine")
    })
 }
 
