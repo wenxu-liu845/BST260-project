@@ -11,7 +11,7 @@ library(shiny)
 library(tidyverse)
 library(forcats)
 library(dslabs)
-library(ggplot2)
+library(lubridate)
 bigtable<-read.csv("bigtable.csv")
 bigtable<- bigtable %>% mutate(date=dmy(date))
 
@@ -33,10 +33,10 @@ ui <- fluidPage(
                      #value=c(min,max)
                      ),
             selectInput("state1",label="Select a state",
-                        choices = as.list(levels(bigtable$state))
+                        choices = as.list(levels(as.factor(bigtable$state)))
                         ),
             selectInput("state2",label="Select a state",
-                        choices = as.list(levels(bigtable$state))
+                        choices = as.list(levels(as.factor(bigtable$state)))
                         )
           ),
       
@@ -50,7 +50,7 @@ ui <- fluidPage(
       sidebarLayout(
         sidebarPanel(
           selectInput("state3",label="Select a state",
-                      choices = as.list(levels(bigtable$state))
+                      choices = as.list(levels(as.factor(bigtable$state)))
           )
           #selectInput("manufacturer",label="Select a vaccine manufacturer",
           #            choices = as.list(c("JJ","Moderna","Pfizer"))

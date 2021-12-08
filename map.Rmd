@@ -1,0 +1,146 @@
+---
+title: "Map"
+author: "Qiuyue Kong"
+date: "12/6/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(zoo)
+library(maps)
+library(gridExtra)
+```
+
+```{r}
+# Import data
+vaccine<-read.csv("COVID-19_Vaccinations_in_the_United_States_Jurisdiction.csv")
+case_death<-read.csv("United_States_COVID-19_Cases_and_Deaths_by_State_over_Time.csv")
+```
+
+```{r}
+# Data wrangling
+USstate=c("AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
+          "KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
+          "NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV",
+          "WI","WY")
+case_death<-case_death %>% 
+  transmute(date=mdy(submission_date),
+            state=state,
+            tot_case=tot_cases,
+            tot_death=tot_death,
+            new_case=new_case,
+            new_death=new_death
+            ) %>%
+  filter(state %in% USstate) %>%
+  filter(date >= as.Date("2021-01-01") & date<=as.Date("2021-11-30"))
+```
+
+```{r}
+vaccine<-vaccine %>% 
+  dplyr::select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
+  rename(state=Location) %>% 
+  mutate(date=mdy(Date)) %>%
+  dplyr::select(-Date)
+```
+
+Now, we are going to do some visualizations using maps.
+```{r}
+# Pull out us state map data frame
+us_states <- map_data("state")
+
+us_states %>% ggplot(aes(x = long, y = lat, fill = region, group = group)) + 
+              geom_polygon(color = "white", fill = "grey") + 
+              coord_fixed(1.3) +
+              guides(fill = FALSE)
+```
+
+Before joining the map data with the CDC data, we need to make sure that the states match successfully with each other whenever possible.
+```{r}
+x <- case_death$state
+case_death <- case_death %>% mutate(region = tolower(state.name[match(x, state.abb)]))
+y <- vaccine$state
+vaccine <- vaccine %>% mutate(region = tolower(state.name[match(y, state.abb)])) %>%
+  mutate()
+```
+
+Then we can combine the two dataset using join functions.
+```{r}
+# Choose two dates (one before delta dominant, one after)
+dates <- c(ymd("2021-06-01", "2021-09-01"))
+
+# Filter case_death data for the two dates and join with us_states data frame.
+comb_cd <- case_death %>% filter(date %in% dates)
+comb_cd <- left_join(comb_cd, us_states, by = "region")
+
+# Filter vaccine data for the two dates and join with us_states data frame.
+comb_vac <- vaccine %>% filter(date %in% dates)
+comb_vac <- left_join(comb_vac, us_states, by = "region")
+```
+
+First we explore the map of new cases and deaths.
+```{r}
+# Heatmap of new cases on June 1, 2021 and Sept. 1, 2021.
+comb_cd %>% ggplot(aes(x = long, y = lat, group = group, fill = new_case)) + 
+  geom_polygon(color = "white") + 
+  coord_fixed(1.3) +
+  facet_grid(date ~ .) +
+  ggtitle("Map of new cases") +
+  scale_fill_viridis_c(name = "New cases", option = "inferno", direction = -1, trans = "sqrt")
+```
+
+```{r}
+# Heatmap of new deaths on June 1, 2021 and Sept. 1, 2021.
+comb_cd %>% ggplot(aes(x = long, y = lat, group = group, fill = new_death)) + 
+  geom_polygon(color = "white") + 
+  coord_fixed(1.3) +
+  facet_grid(date ~ .) +
+  ggtitle("Map of new deaths") +
+  scale_fill_viridis_c(name = "New deaths", option = "rocket", direction = -1, trans = "sqrt")
+```
+
+Then we explore the map of vaccination.
+```{r}
+# Filter case_death data on Sept. 1, 2021 and join with us_states data frame.
+comb_cd <- case_death %>% filter(date == "2021-09-01")
+comb_cd <- left_join(comb_cd, us_states, by = "region")
+
+# Filter vaccine data for the two dates and join with us_states data frame.
+comb_vac <- vaccine %>% filter(date == "2021-09-01")
+comb_vac <- left_join(comb_vac, us_states, by = "region")
+```
+
+```{r}
+# Heatmap of vaccine (regardless of brands) on June 1, 2021 and Sept. 1, 2021.
+comb_vac %>% ggplot(aes(x = long, y = lat, group = group, fill = Administered)) + 
+  geom_polygon(color = "white") + 
+  coord_fixed(1.3) +
+  ggtitle("Map of total vaccines for each state") +
+  scale_fill_viridis_c(name = "Vaccination", option = "mako", direction = -1, trans = "log")
+```
+
+See the difference between vaccine brands.
+```{r}
+# Heatmap of vaccine (Moderna) on Sept. 1, 2021.
+p1 <- comb_vac %>% ggplot(aes(x = long, y = lat, group = group, fill = Administered_Moderna)) + 
+  geom_polygon(color = "white") + 
+  coord_fixed(1.3) +
+  ggtitle("Map of Moderna vaccinations") +
+  scale_fill_viridis_c(name = "Vaccination", option = "mako", direction = -1, trans = "log")
+```
+
+```{r}
+# Heatmap of vaccine (Pfizer) on Sept. 1, 2021.
+p2 <- comb_vac %>% ggplot(aes(x = long, y = lat, group = group, fill = Administered_Pfizer)) + 
+  geom_polygon(color = "white") + 
+  coord_fixed(1.3) +
+  ggtitle("Map of Pfizer vaccinations") +
+  scale_fill_viridis_c(name = "Vaccination", option = "mako", direction = -1, trans = "log")
+```
+
+```{r}
+grid.arrange(p1, p2, ncol = 1)
+```
+
