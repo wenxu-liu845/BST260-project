@@ -96,7 +96,9 @@ The change of new deaths across all states
 ```{r}
 comb%>%
   ggplot(aes(date,new_death,group=state))+
-  geom_line(color='darkseagreen3',alpha=0.6)
+  geom_line(color='darkseagreen3',alpha=0.6)+
+  geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
+  geom_text(aes(x=as.Date("2021-08-30"),y=700,label="Delta variant became dominant"))
 ```
 
 Classify the number of new cases into three categories (1: new case<=10000 on that day, 2: 10000<new case<=20000 on that day, 3: new case>20000 on that day)
@@ -114,7 +116,7 @@ train_set <- slice(clascomb, inTrain)
 test_set  <- slice(clascomb, -inTrain)
 ```
 
-Perform a prediction of new cases using decision tree model
+Classification using decision tree model
 ```{r}
 rpart_fit <- rpart(new_case_clas ~ Administered, data = train_set)
 rpart_preds <- predict(rpart_fit, test_set)
@@ -124,7 +126,7 @@ confusionMatrix(data = as.factor(rpart_res), reference = as.factor(test_set$new_
 test_set%>%
   ggplot()+geom_point(aes(date,rpart_preds),color="red")+geom_point(aes(date,new_case_clas))
 ```
-Perform a prediction of new cases using random forest model
+Classification using random forest model
 ```{r}
 rf_fit <- randomForest(new_case_clas ~ Administered, data = train_set)
 rf_preds <- predict(rf_fit, test_set)
@@ -134,6 +136,15 @@ confusionMatrix(data = as.factor(rf_res), reference = as.factor(test_set$new_cas
 test_set%>%
   ggplot()+geom_point(aes(date,rf_preds),color="red")+geom_point(aes(date,new_case_clas))
 ```
+Regression using random forest
+```{r}
+newcase_rf<-randomForest(new_case~Administered, data=train_set)
+newcase_rf_pred<-predict(newcase_rf,test_set)
+test_set%>%
+  ggplot()+geom_point(aes(date,newcase_rf_pred),color="red")+geom_point(aes(date,new_case))
+```
+
+
 Divide the table into trainset and testset by date (cutoff point: 2021-07-31)
 ```{r}
 trainset<-clascomb%>%
@@ -143,8 +154,9 @@ testset<-clascomb%>%
 #trainset
 ```
 
+Machine learning using linear regression
 ```{r}
-linearfit <- lm(new_case ~ poly(Administered,4,raw=TRUE), data = trainset)
+linearfit <- lm(new_case ~ Administered, data = trainset)
 linear_pred <- predict(linearfit, testset)
 data.frame(
   RMSE = RMSE(linear_pred, testset$new_case),
@@ -157,19 +169,14 @@ ggplot(testset, aes(date, new_case) ) +
   stat_smooth(method = lm, formula = y ~ x)
 ```
 
-Prediction of new death after 2021-07-31 using decision tree model
-```{r}
-rpart_fit1 <- rpart(new_death_clas ~ new_case_clas+Administered, data = trainset)
-rpart_preds1 <- predict(rpart_fit1, testset)
-rpart_res1<-ifelse(rpart_preds1<1.5,1,ifelse(rpart_preds1>=2.5,3,2))
 
-confusionMatrix(data = as.factor(rpart_res1), reference = as.factor(testset$new_death_clas),positive="1")
+Machine learning using random forest
+```{r}
+regr_rf<-randomForest(new_case~Administered, data=trainset)
+regr_rf_pred<-predict(newcase_rf,testset)
 testset%>%
-  ggplot()+geom_point(aes(date,rpart_preds1),color="red")+geom_point(aes(date,new_death_clas))
-#rf_preds1
-```
-
-```{r}
-
+  ggplot()+geom_point(aes(date,regr_rf_pred),color="red")+geom_point(aes(date,new_case))
+plot(regr_rf)
+sqrt(sum((regr_rf_pred - testset$new_case)^2) / nrow(testset))
 ```
 
