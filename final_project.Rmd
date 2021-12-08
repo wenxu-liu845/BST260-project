@@ -1,6 +1,6 @@
 ---
 title: "Final project"
-author: "Xinyun (Stacy) Li"
+author: "Xinyun (Stacy) Li, Qiuyue Kong, Wenxu Liu, Siwei Stella Zhu"
 date: "12/1/2021"
 output: html_document
 ---
