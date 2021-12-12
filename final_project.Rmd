@@ -9,6 +9,31 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Overview and Motivation
+
+As future leaders in the field of public health, we are empowered by the resources available to us from HSPH. We hope to use our analytic skills to contribute to timely public health issues. Given that our daily life in the past two years has been severely impacted by the COVID-19 pandemic, we hope to produce new findings on how scientific research and public notice have impacted vaccine preference and vaccination rates’ impacts on cases and deaths.
+
+# Related Work
+
+# Initial Questions
+
+1. How does vaccination distribution and administration change as delta variant becomes the dominant variant in the United States? 
+2. How does public preference of different COVID-19 vaccination types change by new research outcomes or public notice? 
+3. What proportion of people have been fully vaccinated? What proportion of people have only got one dose of the vaccine? What proportion of people have the booster? Are there any differences between age group (12+, 18+ and 65+ population)? 
+4. How does the vaccination status (fully vaccinated, vaccinated with the first dose, vaccinated with booster dose) predict the number of cases and deaths in the future?  
+5. How does different vaccination types affect cases & deaths, for the total population in the U.S. and populations among different states? 
+
+# Data
+
+### Sources
+
+We used two COVID-related datasets collected from CDC website (open-source data download). We combined the datasets based on date and state and filter out meaningful variables for the purpose of this research. 
+
+1. COVID-19 Vaccine Delivered and Administration Data - “Covid-19 vaccination in the United States, Jurisdiction”. [Link](https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-Jurisdi/unsk-b7fc )
+
+2. “United States COVID-19 Cases and Deaths by State over Time.” [Link](https://data.cdc.gov/Case-Surveillance/United-States-COVID-19-Cases-and-Deaths-by-State-o/9mfq-cb36 )
+
+### Data Cleanup
 
 ```{r}
 library(tidyverse)
@@ -24,13 +49,13 @@ library(gridExtra)
 ```
 
 ```{r}
+# Import Data
 vaccine<-read.csv("COVID-19_Vaccinations_in_the_United_States_Jurisdiction.csv")
 case_death<-read.csv("United_States_COVID-19_Cases_and_Deaths_by_State_over_Time.csv")
 ```
 
-
-
 ```{r}
+# Clean the case-death data into 50 states
 USstate=c("AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS",
           "KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY",
           "NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV",
@@ -48,6 +73,7 @@ case_death<-case_death %>%
 ```
 
 ```{r}
+# Clean the vaccine data (change date to mdy)
 vaccine<-vaccine %>% 
   dplyr::select(c(1,3,13,14,15,16,17,18,19,26,28,30,32,34,36,38,40,42,43,44,46,47,48,50,51,52,54,55,56,58,60,62,64,66,67,68)) %>%
   rename(state=Location) %>% 
@@ -55,8 +81,8 @@ vaccine<-vaccine %>%
   dplyr::select(-Date)
 ```
 
-Combine two tables into #comb#
-#new_comb_ma# contains only data in MA
+Then we combined two tables into #comb# to help us do analyses. The #new_comb_ma# contains only data in MA.
+
 ```{r}
 comb<-right_join(vaccine,case_death,by=c("date","state"))
 #write.csv(comb,"bigtable.csv",row.names = FALSE)
@@ -71,8 +97,12 @@ new_comb_ma<-comb%>%
   #mutate(new_pfizer=Administered_Pfizer-lag(Administered_Pfizer))
 ```
 
-The number of new cases against date in MA
+# Exploratory Analysis
+
+As for the EDA, we first focused on the data in MA only. We want to see the trend of ne
+
 ```{r}
+# The number of new cases against date in MA
 new_comb_ma%>%ggplot(aes(x=date))+
   geom_point(aes(y=new_case))+
   geom_vline(xintercept=as.Date("2021-07-03"),color="red")+
