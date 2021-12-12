@@ -97,6 +97,10 @@ new_comb_ma<-comb%>%
   #mutate(new_pfizer=Administered_Pfizer-lag(Administered_Pfizer))
 ```
 
+# Exploratory Analysis
+
+As for the EDA, we first focused on the data in MA only. We want to see the trend of ne
+
 ```{r}
 # The number of new cases against date in MA
 new_comb_ma%>%ggplot(aes(x=date))+
