@@ -22,7 +22,6 @@ ui <- fluidPage(
    
    tabsetPanel(
      tabPanel("Total case/death vs. date",
-   # Sidebar 
         sidebarLayout(
           sidebarPanel(
             p("The plot shows the change of total case/death of COVID-19 across the time period selected from the slider bar among three states selected from the drop-down."),
