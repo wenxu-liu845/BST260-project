@@ -39,7 +39,7 @@ ui <- fluidPage(
             selectInput("state2",label="Select the second state",
                         choices = as.list(levels(as.factor(bigtable$state)))
                         ),
-            selectInput("state3",label="Select the thrid state",
+            selectInput("state3",label="Select the third state",
                         choices = as.list(levels(as.factor(bigtable$state)))
                         )
           ),
