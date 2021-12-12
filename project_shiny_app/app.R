@@ -43,8 +43,6 @@ ui <- fluidPage(
                         choices = as.list(levels(as.factor(bigtable$state)))
                         )
           ),
-      
-      
           mainPanel(
             plotOutput("line1"),
             plotOutput("line2")
